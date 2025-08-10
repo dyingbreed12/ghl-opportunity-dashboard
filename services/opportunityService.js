@@ -1,6 +1,17 @@
 // services/opportunityService.js
 const db = require('../database/sqlite');
 
+
+function calculateAssignmentFee(dealType, askingPrice, contractedPrice, jvShare) {
+  if (dealType === "Fee On Top") {
+    return askingPrice - contractedPrice;
+  } else if (dealType === "JV Split") {
+    return (askingPrice - contractedPrice) * (jvShare / 100);
+  } else {
+    return null; // or any default value you want
+  }
+}
+
 function upsertOpportunity(opportunity, callback) {
   if (!opportunity || !opportunity.id || !opportunity.customData) {
     return callback(new Error('Opportunity payload is null or incomplete'));
@@ -22,14 +33,18 @@ function upsertOpportunity(opportunity, callback) {
         UPDATE Opportunities SET 
           DealType = ?, AskingPrice = ?, AssignmentFee = ?, ContractedPrice = ?, JVShare = ?,
           OptionPeriodExpiration = ?, ClosingDate = ?, Access = ?, LockboxCode = ?, ShowingTime = ?,
-          Quality = ?, MarketingLink = ?, PicturesLink = ?, Wholesaler = ?, Notes = ?
+          Quality = ?, MarketingLink = ?, PicturesLink = ?, Wholesaler = ?, Notes = ?, CompensationType = ?
         WHERE Id = ?
       `;
+
+      //console.log(cd);
+      //var assignmentFee = calculateAssignmentFee(cd.compensation_type, cd.asking_price, cd.contracted_price, cd.jv_share);
+      var assignmentFee = cd.assignment_fee;
 
       db.run(updateSql, [
         cd.deal_type || '',
         cd.asking_price || 0,
-        cd.assignment_fee || 0,
+        assignmentFee || 0,
         cd.contracted_price || 0,
         cd.jv_share || '',
         cd.option_period_expiration ? new Date(cd.option_period_expiration).toISOString() : null,
@@ -42,6 +57,7 @@ function upsertOpportunity(opportunity, callback) {
         cd.pictures_link || '',
         cd.wholesaler || '',
         cd.notes || '',
+        cd.compensation_type || '',
         row.Id
       ], function(updateErr) {
         if (updateErr) return callback(updateErr);
@@ -54,9 +70,13 @@ function upsertOpportunity(opportunity, callback) {
         INSERT INTO Opportunities (
           OpportunityId, PropertyAddress, PropertyType, DealType, AskingPrice, AssignmentFee,
           ContractedPrice, JVShare, OptionPeriodExpiration, ClosingDate, Access, LockboxCode,
-          ShowingTime, Quality, MarketingLink, PicturesLink, Wholesaler, Notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ShowingTime, Quality, MarketingLink, PicturesLink, Wholesaler, Notes, CompensationType
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
+
+
+      //var assignmentFee = calculateAssignmentFee(cd.deal_type, cd.asking_price, cd.contracted_price, cd.jv_share);
+      var assignmentFee = cd.assignment_fee;
 
       db.run(insertSql, [
         opportunity.id,
@@ -64,7 +84,7 @@ function upsertOpportunity(opportunity, callback) {
         cd.property_type || '',
         cd.deal_type || '',
         cd.asking_price || 0,
-        cd.assignment_fee || 0,
+        assignmentFee || 0,
         cd.contracted_price || 0,
         cd.jv_share || '',
         cd.option_period_expiration ? new Date(cd.option_period_expiration).toISOString() : null,
@@ -76,7 +96,8 @@ function upsertOpportunity(opportunity, callback) {
         cd.marketing_link || '',
         cd.pictures_link || '',
         cd.wholesaler || '',
-        cd.notes || ''
+        cd.notes || '',
+        cd.compensation_type || ''
       ], function(insertErr) {
         if (insertErr) return callback(insertErr);
         callback(null, { action: 'inserted', id: this.lastID });
@@ -85,4 +106,12 @@ function upsertOpportunity(opportunity, callback) {
   });
 }
 
-module.exports = { upsertOpportunity };
+function removeOpportunity(id, callback) {
+  // Your DB delete logic here, e.g.:
+  db.run('DELETE FROM opportunities WHERE id = ?', [id], function(err) {
+    if (err) return callback(err);
+    callback(null);
+  });
+}
+
+module.exports = { upsertOpportunity, removeOpportunity };

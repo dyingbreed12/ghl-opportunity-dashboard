@@ -14,7 +14,7 @@ module.exports = function(io) {
       io.emit('opportunitiesUpdated');
 
       res.json({
-        message: `${result.action} opportunity with id ${result.id}`,
+        //message: `${result.action} opportunity with id ${result.id}`,
         reloadDashboard: true
       });
     });

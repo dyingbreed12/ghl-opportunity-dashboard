@@ -1,23 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const { upsertOpportunity } = require('../services/opportunityService');
+const { upsertOpportunity, removeOpportunity } = require('../services/opportunityService');
 
 module.exports = function(io) {
   router.post('/', (req, res) => {
-
-    console.log('Webhook received opportunity:', req.body);
     upsertOpportunity(req.body, (err, result) => {
       if (err) {
         console.error('Webhook opportunity upsert error:', err.message);
         return res.status(500).json({ error: err.message });
       }
 
-      console.log(`Webhook processed opportunity ${result.action} with id ${result.id}`);
-
-      // Notify all connected clients to refresh
-      io.emit('opportunitiesUpdated');
+      io.emit('opportunitiesUpdated'); // notify clients
 
       res.json({ status: 'Webhook processed', action: result.action, id: result.id });
+    });
+  });
+
+  router.post('/removeopportunity', (req, res) => {
+    const { id } = req.body;  // or req.params, based on how you want to pass ID
+    if (!id) {
+      return res.status(400).json({ error: 'Missing opportunity id' });
+    }
+
+    removeOpportunity(id, (err) => {
+      if (err) {
+        console.error('Error removing opportunity:', err.message);
+        return res.status(500).json({ error: err.message });
+      }
+
+      io.emit('opportunitiesUpdated'); // notify clients of removal
+
+      res.json({ status: 'Opportunity removed', id });
     });
   });
 
