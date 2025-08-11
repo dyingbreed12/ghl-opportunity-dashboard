@@ -3,27 +3,39 @@ const db = require('../database/sqlite');
 
 
 function calculateAssignmentFee(compensationType, askingPrice, contractedPrice, jvShare) {
-  // Helper function to strip special characters and convert to number
+  // Helper: strip special characters & convert to number
   const sanitizeNumber = (value) => {
     if (value === null || value === undefined) return 0;
     return parseFloat(String(value).replace(/[^0-9.-]/g, "")) || 0;
   };
 
-  // Clean the inputs
-  // const cleanAskingPrice = sanitizeNumber(askingPrice);
-  // const cleanContractedPrice = sanitizeNumber(contractedPrice);
-  // const cleanJVShare = sanitizeNumber(jvShare);
+  // Currency formatter (USD here — change "USD" to "PHP" if needed)
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
 
-  // Calculate based on compensation type
+  // Cleaned numbers
+  const cleanAskingPrice = sanitizeNumber(askingPrice);
+  const cleanContractedPrice = sanitizeNumber(contractedPrice);
+  const cleanJVShare = sanitizeNumber(jvShare);
+
+  let fee = 0;
+
+  // Calculate fee
   if (compensationType === "Fee On Top") {
-    return cleanAskingPrice - cleanContractedPrice;
+    fee = cleanAskingPrice - cleanContractedPrice;
   } else if (compensationType === "JV Split") {
-    return (cleanAskingPrice - cleanContractedPrice) * (cleanJVShare / 100);
+    fee = (cleanAskingPrice - cleanContractedPrice) * (cleanJVShare / 100);
   } else {
-    return null; // or 0 if you prefer
+    return formatCurrency(0); // Default 0 in currency format
   }
-}
 
+  return formatCurrency(fee);
+}
 
 function upsertOpportunity(opportunity, callback) {
   if (!opportunity || !opportunity.id || !opportunity.customData) {
