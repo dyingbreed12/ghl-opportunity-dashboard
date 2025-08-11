@@ -17,7 +17,12 @@ module.exports = function(io) {
   });
 
   router.post('/removeopportunity', (req, res) => {
+
+    //console.log(req.body);
+
     const { id } = req.body;  // or req.params, based on how you want to pass ID
+    
+    //console.log('Removing opportunity with ID:', id);
     if (!id) {
       return res.status(400).json({ error: 'Missing opportunity id' });
     }

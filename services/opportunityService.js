@@ -2,15 +2,28 @@
 const db = require('../database/sqlite');
 
 
-function calculateAssignmentFee(dealType, askingPrice, contractedPrice, jvShare) {
-  if (dealType === "Fee On Top") {
-    return askingPrice - contractedPrice;
-  } else if (dealType === "JV Split") {
-    return (askingPrice - contractedPrice) * (jvShare / 100);
+function calculateAssignmentFee(compensationType, askingPrice, contractedPrice, jvShare) {
+  // Helper function to strip special characters and convert to number
+  const sanitizeNumber = (value) => {
+    if (value === null || value === undefined) return 0;
+    return parseFloat(String(value).replace(/[^0-9.-]/g, "")) || 0;
+  };
+
+  // Clean the inputs
+  // const cleanAskingPrice = sanitizeNumber(askingPrice);
+  // const cleanContractedPrice = sanitizeNumber(contractedPrice);
+  // const cleanJVShare = sanitizeNumber(jvShare);
+
+  // Calculate based on compensation type
+  if (compensationType === "Fee On Top") {
+    return cleanAskingPrice - cleanContractedPrice;
+  } else if (compensationType === "JV Split") {
+    return (cleanAskingPrice - cleanContractedPrice) * (cleanJVShare / 100);
   } else {
-    return null; // or any default value you want
+    return null; // or 0 if you prefer
   }
 }
+
 
 function upsertOpportunity(opportunity, callback) {
   if (!opportunity || !opportunity.id || !opportunity.customData) {
@@ -37,9 +50,9 @@ function upsertOpportunity(opportunity, callback) {
         WHERE Id = ?
       `;
 
-      //console.log(cd);
-      //var assignmentFee = calculateAssignmentFee(cd.compensation_type, cd.asking_price, cd.contracted_price, cd.jv_share);
-      var assignmentFee = cd.assignment_fee;
+      var assignmentFee = calculateAssignmentFee(cd.compensation_type, cd.asking_price, cd.contracted_price, cd.jv_share);
+      //console.log('Calculated Assignment Fee:', assignmentFee);
+      //var assignmentFee = cd.assignment_fee;
 
       db.run(updateSql, [
         cd.deal_type || '',
@@ -74,9 +87,9 @@ function upsertOpportunity(opportunity, callback) {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
-
-      //var assignmentFee = calculateAssignmentFee(cd.deal_type, cd.asking_price, cd.contracted_price, cd.jv_share);
-      var assignmentFee = cd.assignment_fee;
+      var assignmentFee = calculateAssignmentFee(cd.compensation_type, cd.asking_price, cd.contracted_price, cd.jv_share);
+      //var assignmentFee = cd.assignment_fee;
+      //console.log('Calculated Assignment Fee:', assignmentFee);
 
       db.run(insertSql, [
         opportunity.id,
@@ -108,7 +121,7 @@ function upsertOpportunity(opportunity, callback) {
 
 function removeOpportunity(id, callback) {
   // Your DB delete logic here, e.g.:
-  db.run('DELETE FROM opportunities WHERE id = ?', [id], function(err) {
+  db.run('DELETE FROM opportunities WHERE OpportunityId = ?', [id], function(err) {
     if (err) return callback(err);
     callback(null);
   });
